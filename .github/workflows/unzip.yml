@@ -1,0 +1,196 @@
+# .github/workflows/extract-zips.yml
+#
+# 自动解压工作流 — 解压仓库中所有 .zip 文件，原地释放后删除压缩包
+#
+# 触发方式:
+#   1. 推送到 main/master 时自动运行
+#   2. 手动触发 (workflow_dispatch)
+#   3. 当 push 中包含 .zip 文件变更时运行
+#
+# 使用前提:
+#   - Settings → Actions → General → Workflow permissions 设为 "Read and write"
+#   - 或在 workflow 中显式使用 PAT / deploy key
+
+name: Extract All Zips
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - '**/*.zip'
+  workflow_dispatch:
+
+# 防止多个实例并发冲突
+concurrency:
+  group: extract-zips-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  extract:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+
+    steps:
+      # ──────────────────────────────────────────────
+      # 1. 检出仓库（fetch 全量历史，防止 force-push 覆盖）
+      # ──────────────────────────────────────────────
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # ──────────────────────────────────────────────
+      # 2. 安装解压依赖
+      # ──────────────────────────────────────────────
+      - name: Install dependencies
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq unzip p7zip-full > /dev/null
+
+      # ──────────────────────────────────────────────
+      # 3. 扫描并解压所有 .zip 文件
+      # ──────────────────────────────────────────────
+      - name: Extract all zip files in-place
+        id: extract
+        run: |
+          set -euo pipefail
+
+          # 收集所有 .zip 文件（排除 .git 目录）
+          mapfile -t zips < <(find . -not -path './.git/*' -name '*.zip' -type f | sort)
+
+          if [[ ${#zips[@]} -eq 0 ]]; then
+            echo "count=0" >> "$GITHUB_OUTPUT"
+            echo "::notice::未找到任何 .zip 文件，跳过。"
+            exit 0
+          fi
+
+          echo "count=${#zips[@]}" >> "$GITHUB_OUTPUT"
+          echo "::notice::找到 ${#zips[@]} 个 .zip 文件，开始解压..."
+
+          success=0
+          failed=0
+          deleted=0
+
+          for zip_path in "${zips[@]}"; do
+            # 目标目录 = zip 所在目录（原地解压）
+            dest_dir="$(dirname "$zip_path")"
+            zip_name="$(basename "$zip_path")"
+
+            echo ""
+            echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+            echo "📦 解压: $zip_path"
+            echo "   目标: $dest_dir/"
+            echo "   大小: $(du -h "$zip_path" | cut -f1)"
+
+            # 验证 zip 完整性
+            if ! unzip -t "$zip_path" > /dev/null 2>&1; then
+              echo "::warning::文件损坏，跳过: $zip_path"
+              ((failed++)) || true
+              continue
+            fi
+
+            # 列出内容概况
+            file_count=$(unzip -l "$zip_path" | tail -1 | awk '{print $2}')
+            echo "   包含: ${file_count:-?} 个条目"
+
+            # 解压（-o 覆盖已存在文件，-q 安静模式）
+            if unzip -o -q "$zip_path" -d "$dest_dir"; then
+              echo "   ✅ 解压成功"
+              ((success++)) || true
+
+              # 解压成功后删除 zip
+              rm -f "$zip_path"
+              echo "   🗑️  已删除: $zip_name"
+              ((deleted++)) || true
+            else
+              echo "::warning::解压失败: $zip_path"
+              ((failed++)) || true
+            fi
+          done
+
+          echo ""
+          echo "━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━"
+          echo "📊 汇总: 成功 ${success}, 失败 ${failed}, 删除 ${deleted}"
+
+          # 供后续 step 使用
+          echo "success=$success" >> "$GITHUB_OUTPUT"
+          echo "failed=$failed"   >> "$GITHUB_OUTPUT"
+          echo "deleted=$deleted" >> "$GITHUB_OUTPUT"
+
+      # ──────────────────────────────────────────────
+      # 4. 清理空目录（可选，保持仓库整洁）
+      # ──────────────────────────────────────────────
+      - name: Remove empty directories
+        if: steps.extract.outputs.count != '0'
+        run: |
+          # 仅删除解压过程中产生的空目录，保留 .git 等
+          find . -not -path './.git/*' -type d -empty -delete 2>/dev/null || true
+          echo "::notice::已清理空目录。"
+
+      # ──────────────────────────────────────────────
+      # 5. 配置 Git
+      # ──────────────────────────────────────────────
+      - name: Configure Git
+        if: steps.extract.outputs.count != '0' && steps.extract.outputs.success != '0'
+        run: |
+          git config user.name  "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+
+      # ──────────────────────────────────────────────
+      # 6. 提交并推送变更
+      # ──────────────────────────────────────────────
+      - name: Commit and push changes
+        if: steps.extract.outputs.count != '0' && steps.extract.outputs.success != '0'
+        run: |
+          # 检查是否有实际变更
+          git add -A
+
+          if git diff --cached --quiet; then
+            echo "::notice::解压完成但无文件变更（内容可能已存在），无需提交。"
+            exit 0
+          fi
+
+          # 统计变更概况
+          added=$(git diff --cached --numstat | awk '{s+=$1} END{print s+0}')
+          removed=$(git diff --cached --numstat | awk '{s+=$2} END{print s+0}')
+
+          msg="auto: extract ${deleted} zip archive(s)"
+
+          git commit -m "$msg" \
+                     -m "解压文件: ${success} 个成功, ${failed} 个失败" \
+                     -m "删除压缩包: ${deleted} 个" \
+                     -m "新增行数: ${added}, 删除行数: ${removed}" \
+                     --allow-empty
+
+          # 带重试的推送（防止并发 push 冲突）
+          for attempt in 1 2 3; do
+            if git push; then
+              echo "✅ 推送成功"
+              break
+            fi
+            echo "::warning::推送失败，第 ${attempt} 次重试..."
+            git pull --rebase --autostash
+            sleep $((attempt * 2))
+          done
+
+      # ──────────────────────────────────────────────
+      # 7. 最终状态报告
+      # ──────────────────────────────────────────────
+      - name: Summary
+        if: always() && steps.extract.outputs.count != '0'
+        run: |
+          {
+            echo "## 📦 Zip 解压报告"
+            echo ""
+            echo "| 指标 | 数量 |"
+            echo "|------|------|"
+            echo "| 找到 zip 文件 | ${{ steps.extract.outputs.count }} |"
+            echo "| 成功解压 | ${{ steps.extract.outputs.success }} |"
+            echo "| 解压失败 | ${{ steps.extract.outputs.failed }} |"
+            echo "| 已删除压缩包 | ${{ steps.extract.outputs.deleted }} |"
+            echo ""
+            echo "> 运行于: \`${{ github.sha }}\`"
+          } >> "$GITHUB_STEP_SUMMARY"
