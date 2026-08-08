@@ -11,8 +11,8 @@ jobs:
     steps:  
       - uses: actions/checkout@v4  
       - uses: microsoft/setup-msbuild@v2  
-      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /t:Restore /p:RestorePackagesConfig=true /p:Configuration=Release /p:Platform="Any CPU"  
-      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /p:Configuration=Release /p:Platform="Any CPU"
+      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /t:Restore /p:RestorePackagesConfig=true   
+      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /p:Configuration=Release /p:Platform=x64 /m
       - uses: actions/upload-artifact@v4  
         with:  
           name: UXM-Selective-Unpack-win10  
