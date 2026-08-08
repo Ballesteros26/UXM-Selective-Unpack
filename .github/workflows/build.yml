@@ -1,19 +1,25 @@
-name: Build UXM Selective Unpack  
-  
-on:  
-  push:  
-  pull_request:  
-  workflow_dispatch:  
-  
-jobs:  
-  build:  
-    runs-on: windows-2022  
-    steps:  
-      - uses: actions/checkout@v4  
-      - uses: microsoft/setup-msbuild@v2  
-      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /t:Restore /p:RestorePackagesConfig=true   
-      - run: msbuild "UXM-Selective-Unpack/UXM Selective Unpack.sln" /p:Configuration=Release /p:Platform=x64 /m
-      - uses: actions/upload-artifact@v4  
-        with:  
-          name: UXM-Selective-Unpack-win10  
-          path: UXM-Selective-Unpack/UXM/bin/Release/**
+name: Build UXM Selective Unpack
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+    branches: [main, master]
+jobs:
+  build:
+    runs-on: windows-2022
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+      - name: Setup MSBuild
+        uses: microsoft/setup-msbuild@v2
+      - name: Setup NuGet
+        uses: nuget/setup-nuget@v2
+      - name: Restore NuGet packages
+        run: nuget restore "UXM-Selective-Unpack\UXM Selective Unpack.sln"
+      - name: Build solution in Release
+        run: msbuild "UXM-Selective-Unpack\UXM Selective Unpack.sln" /p:Configuration=Release /p:Platform="Any CPU"
+      - name: Upload build artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: UXM-Selective-Unpack-Release
+          path: UXM-Selective-Unpack\UXM\bin\Release\
