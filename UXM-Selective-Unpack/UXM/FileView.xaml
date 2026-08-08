@@ -1,0 +1,124 @@
+﻿<UserControl x:Class="UXM.FileView"
+             xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+             xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+             xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006" 
+             xmlns:d="http://schemas.microsoft.com/expression/blend/2008" 
+             xmlns:local="clr-namespace:UXM" d:DataContext="{d:DesignInstance Type=local:FileView}"
+             mc:Ignorable="d" d:Background="White"
+             d:DesignHeight="450" d:DesignWidth="800">
+    <UserControl.Resources>
+        <ResourceDictionary>
+            <local:StringToVisibilityConverter x:Key="StringToVisibilityConverter"/>
+            <local:BoolToVisibilityConverter x:Key="BoolToVisibilityConverter"/>
+            <Style x:Key="SearchableTreeView" TargetType="{x:Type TreeView}">
+                <Setter Property="Background" Value="Transparent"/>
+                <Setter Property="ItemContainerStyle">
+                    <Setter.Value>
+                        <Style TargetType="{x:Type TreeViewItem}">
+                            <Setter Property="BorderThickness" Value="1.5"/>
+                            <Setter Property="IsExpanded" Value="{Binding Path=Expanded, Mode=TwoWay}" />
+                            <Setter Property="Visibility" Value="{Binding Path=Visibility, Mode=OneWay, 
+                        Converter={StaticResource ResourceKey=BoolToVisibilityConverter}}"/>
+                            <Style.Triggers>
+                                <Trigger Property="IsSelected" Value="True">
+                                    <Setter Property="BorderBrush" Value="#FFABC0F0"/>
+                                </Trigger>
+                                <MultiTrigger>
+                                    <MultiTrigger.Conditions>
+                                        <Condition Property="IsSelected" Value="True"/>
+                                        <Condition Property="IsSelectionActive" Value="False"/>
+                                    </MultiTrigger.Conditions>
+                                    <Setter Property="BorderBrush" Value="LightGray"/>
+                                </MultiTrigger>
+                            </Style.Triggers>
+                            <Style.Resources>
+                                <Style TargetType="Border">
+                                    <Setter Property="CornerRadius" Value="3"/>
+                                </Style>
+                            </Style.Resources>
+                        </Style>
+                    </Setter.Value>
+                </Setter>
+
+                <Setter Property="ItemTemplate">
+                    <Setter.Value>
+                        <HierarchicalDataTemplate DataType="{x:Type local:TreeNode}" 
+                       ItemsSource="{Binding Path=Nodes, Mode=OneWay}">
+                            <StackPanel Orientation="Horizontal" Margin="2 0 4 0">
+                                <CheckBox IsChecked="{Binding Selected}"/>
+                                <TextBlock Text="{Binding Path=Name, Mode=OneWay}" />
+                            </StackPanel>
+                        </HierarchicalDataTemplate>
+                    </Setter.Value>
+                </Setter>
+
+                <Style.Resources>
+                    <SolidColorBrush x:Key="{x:Static SystemColors.HighlightTextBrushKey}" Color="Black" />
+                    <SolidColorBrush x:Key="{x:Static SystemColors.ControlTextBrushKey}" Color="Black" />
+                    <LinearGradientBrush x:Key="{x:Static SystemColors.HighlightBrushKey}" 
+                    EndPoint="0,1" StartPoint="0,0">
+                        <GradientStop Color="#FFE0F0FF" Offset="0"/>
+                        <GradientStop Color="#FFABE0FF" Offset="1"/>
+                    </LinearGradientBrush>
+                    <LinearGradientBrush x:Key="{x:Static SystemColors.ControlBrushKey}" 
+                    EndPoint="0,1" StartPoint="0,0">
+                        <GradientStop Color="#FFEEEEEE" Offset="0"/>
+                        <GradientStop Color="#FFDDDDDD" Offset="1"/>
+                    </LinearGradientBrush>
+                </Style.Resources>
+            </Style>
+        </ResourceDictionary>
+    </UserControl.Resources>
+    <Grid>
+        <Grid>
+            <Grid.ColumnDefinitions>
+                <ColumnDefinition/>
+                <ColumnDefinition Width="10"/>
+                <ColumnDefinition Width="100"/>
+            </Grid.ColumnDefinitions>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="25"/>
+                <RowDefinition/>
+            </Grid.RowDefinitions>
+
+            <StackPanel Grid.Row="0" Grid.RowSpan="2" Grid.Column="2" Margin="0,0,10,0">
+                <Separator Visibility="Hidden"/>
+                <Button Content="Ok" Height="25" Click="Ok_Click"/>
+                <Separator Visibility="Hidden"/>
+                <Button Content="Select All" Height="25" Click="SelectAll_Click"/>
+                <Separator Visibility="Hidden"/>
+                <Button Content="Clear" Height="25" Click="Clear_Click"/>
+                <!--<Separator Visibility="Hidden"/>-->
+                <!--<Button Content="Show" Height="25" Click="Show_Click"/>-->
+            </StackPanel>
+
+            <Grid>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition/>
+                    <!--<ColumnDefinition Width="125"/>-->
+                </Grid.ColumnDefinitions>
+                <TextBox Text="{Binding ItemFilter, UpdateSourceTrigger=PropertyChanged}"  VerticalContentAlignment="Center"/>
+                <Label Foreground="LightSlateGray" Content="Search..." IsEnabled="False" Margin="5,0,0,0" IsHitTestVisible="False"
+                           Visibility="{Binding ItemFilter, Converter={StaticResource ResourceKey=StringToVisibilityConverter}}"/>
+                <!--<CheckBox Content="Expand on Search" HorizontalAlignment="Center" Grid.Column="1" VerticalAlignment="Center" IsChecked="{Binding Expand}"/>-->
+            </Grid>
+
+            <TreeView Name="FileTree" Grid.Row="1" Grid.Column="0" ItemsSource="{Binding TreeNodesCollection}" Style="{StaticResource ResourceKey=SearchableTreeView}" VirtualizingStackPanel.IsVirtualizing="True">
+
+                <!--<TreeView.Resources>
+                    <HierarchicalDataTemplate DataType="{x:Type local:TreeNode}" ItemsSource="{Binding NodeCollection}">
+                        <TreeViewItem Visibility="{Binding Visibility, Converter={StaticResource ResourceKey=BoolToVisibilityConverter}}" IsExpanded="{Binding Visibility}">
+                            <TreeViewItem.Header>
+                                <StackPanel Orientation="Horizontal"  >
+                                    <CheckBox IsChecked="{Binding Selected}" Checked="CheckBox_Checked" Unchecked="CheckBox_Checked"/>
+                                    <TextBlock Text="{Binding Path=Name}" />
+                                </StackPanel>
+                            </TreeViewItem.Header>
+                        </TreeViewItem>
+               
+                    </HierarchicalDataTemplate>
+                </TreeView.Resources>-->
+            </TreeView>
+        </Grid>
+    </Grid>
+</UserControl>
