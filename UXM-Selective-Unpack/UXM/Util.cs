@@ -164,59 +164,55 @@ namespace UXM
                 }
             }
         }
+
         public static string GetExtensions(byte[] bytes)
         {
-
             try
             {
-                using (BinaryReaderEx br = new BinaryReaderEx(false, bytes))
+                BinaryReaderEx br = new BinaryReaderEx(false, bytes);
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "DCX\0")
                 {
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "DCX\0")
-                    {
-
-                        byte[] decompressedBytes = DCX.Decompress(bytes);
-                        return $"{GetExtensions(decompressedBytes)}.dcx";
-                    }
-                    if (bytes.Length >= 3 && br.GetASCII(0, 3) == "GFX")
-                        return ".gfx";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "FSB5")
-                        return ".fsb";
-                    if (bytes.Length >= 0x19 && br.GetASCII(0xC, 0xE) == "ITLIMITER_INFO")
-                        return ".itl";
-                    if (bytes.Length >= 0x10 && br.GetASCII(8, 8) == "FEV FMT ")
-                        return ".fev";
-                    if (bytes.Length >= 4 && br.GetASCII(1, 3) == "Lua")
-                        return ".lua";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "DDS ")
-                        return ".dds";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "#BOM")
-                        return ".txt";
-                    if (BND3.IsRead(bytes, out BND3 bnd3))
-                        return $"{GetBNDExtensions(bnd3)}.bnd";
-                    if (BND4.IsRead(bytes, out BND4 bnd4))
-                        return $"{GetBNDExtensions(bnd4)}.bnd";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BHF4")
-                        return ".bhd";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BDF4")
-                        return ".bdt";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "RIFF")
-                        return ".wem";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BKHD")
-                        return ".bnk";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "PSC ")
-                        return ".pipelinestatecache";
-                    if (bytes.Length >= 4 && br.GetASCII(0, 4) == "ENFL")
-                        return ".entryfilelist";
+                    byte[] decompressedBytes = DCX.Decompress(bytes);
+                    return $"{GetExtensions(decompressedBytes)}.dcx";
                 }
+                if (bytes.Length >= 3 && br.GetASCII(0, 3) == "GFX")
+                    return ".gfx";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "FSB5")
+                    return ".fsb";
+                if (bytes.Length >= 0x19 && br.GetASCII(0xC, 0xE) == "ITLIMITER_INFO")
+                    return ".itl";
+                if (bytes.Length >= 0x10 && br.GetASCII(8, 8) == "FEV FMT ")
+                    return ".fev";
+                if (bytes.Length >= 4 && br.GetASCII(1, 3) == "Lua")
+                    return ".lua";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "DDS ")
+                    return ".dds";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "#BOM")
+                    return ".txt";
+                if (BND3.IsRead(bytes, out BND3 bnd3))
+                    return $"{GetBNDExtensions(bnd3)}.bnd";
+                if (BND4.IsRead(bytes, out BND4 bnd4))
+                    return $"{GetBNDExtensions(bnd4)}.bnd";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BHF4")
+                    return ".bhd";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BDF4")
+                    return ".bdt";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "RIFF")
+                    return ".wem";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "BKHD")
+                    return ".bnk";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "PSC ")
+                    return ".pipelinestatecache";
+                if (bytes.Length >= 4 && br.GetASCII(0, 4) == "ENFL")
+                    return ".entryfilelist";
             }
             catch (EndOfStreamException)
             {
                 return $"failed-to-read.dcx";
             }
-
             return ".unk";
         }
-
+        
         private static string GetBNDExtensions(IBinder bnd)
         {
             if (bnd.Files.Count == 1)
