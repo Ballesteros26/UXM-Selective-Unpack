@@ -199,12 +199,12 @@ namespace UXM
                 return;
             }
 
-            IntPtr oodlePtr = Oodle.GetOodlePtr();
-            if (oodlePtr != IntPtr.Zero)
-            {
-                Kernel32.FreeLibrary(oodlePtr);
-                return;
-            }
+            //IntPtr oodlePtr = Oodle.GetOodlePtr();
+            //if (oodlePtr != IntPtr.Zero)
+            //{
+            //    Kernel32.FreeLibrary(oodlePtr);
+            //    return;
+            //}
         }
 
         private static void UnpackDarkSoulsPTDE(string exePath, string gameDir, IProgress<(double value, string status)> progress)
